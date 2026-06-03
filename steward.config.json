@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "token_env": "GITHUB_TOKEN",
+  "output_dir": "reports",
+  "targets": [
+    {
+      "kind": "authenticated_user",
+      "visibility": "all",
+      "affiliation": "owner,collaborator,organization_member"
+    }
+  ],
+  "checks": {
+    "readme": true,
+    "pull_requests": true,
+    "workflows": true
+  },
+  "classification": {
+    "archive_after_days": 730,
+    "delete_review_after_days": 1460,
+    "portfolio_recent_days": 365,
+    "small_repo_kb": 256
+  }
+}
