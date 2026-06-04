@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from .config import ConfigError, load_config, load_dotenv, target_requires_token
@@ -12,15 +13,15 @@ from .models import Inventory, RepoRecord
 from .reports import write_reports
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, *, dotenv_path: str | Path | None = ".env") -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.command == "sample":
         return sample_command(args)
     if args.command == "run":
-        return run_command(args)
+        return run_command(args, dotenv_path=dotenv_path)
     if args.command == "validate":
-        return validate_command(args)
+        return validate_command(args, dotenv_path=dotenv_path)
     parser.print_help()
     return 2
 
@@ -56,10 +57,10 @@ def sample_command(args: argparse.Namespace) -> int:
     return 0
 
 
-def run_command(args: argparse.Namespace) -> int:
+def run_command(args: argparse.Namespace, *, dotenv_path: str | Path | None = ".env") -> int:
     try:
         config = load_config(args.config)
-        load_dotenv()
+        load_dotenv_if_enabled(dotenv_path)
     except ConfigError as exc:
         print(f"Config error: {exc}", file=sys.stderr)
         return 1
@@ -81,10 +82,10 @@ def run_command(args: argparse.Namespace) -> int:
     return 0
 
 
-def validate_command(args: argparse.Namespace) -> int:
+def validate_command(args: argparse.Namespace, *, dotenv_path: str | Path | None = ".env") -> int:
     try:
         config = load_config(args.config)
-        load_dotenv()
+        load_dotenv_if_enabled(dotenv_path)
     except ConfigError as exc:
         print(f"Config error: {exc}", file=sys.stderr)
         return 1
@@ -113,6 +114,11 @@ def validate_command(args: argparse.Namespace) -> int:
     print(f"Rate limit remaining: {headers.get('X-RateLimit-Remaining', 'unknown')}")
     print("Safety mode: READ_ONLY_VALIDATION")
     return 0
+
+
+def load_dotenv_if_enabled(dotenv_path: str | Path | None) -> None:
+    if dotenv_path is not None:
+        load_dotenv(dotenv_path)
 
 
 def sample_inventory() -> Inventory:
