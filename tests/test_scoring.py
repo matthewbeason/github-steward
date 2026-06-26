@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import unittest
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from github_steward.models import RepoRecord
 from github_steward.scoring import assess_repo

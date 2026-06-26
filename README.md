@@ -12,6 +12,8 @@ Run from source:
 PYTHONPATH=src python3 -m github_steward.cli validate --config steward.config.json
 PYTHONPATH=src python3 -m github_steward.cli sample --config steward.config.json
 PYTHONPATH=src python3 -m github_steward.cli run --config steward.config.json
+PYTHONPATH=src python3 -m github_steward.cli release-status --config steward.config.json
+PYTHONPATH=src python3 -m github_steward.cli release-status --config steward.config.json --json
 ```
 
 Install locally:
@@ -23,6 +25,8 @@ python3 -m pip install -e .
 github-steward validate --config steward.config.json
 github-steward sample --config steward.config.json
 github-steward run --config steward.config.json
+github-steward release-status --config steward.config.json
+github-steward release-status --config steward.config.json --json
 ```
 
 `validate` checks config shape, loads `.env`, confirms token presence when an `authenticated_user` target requires it, and probes `GET /user` when a token is available. It does not fetch repository inventory.
@@ -30,6 +34,10 @@ github-steward run --config steward.config.json
 `sample` writes reports from built-in sample data and requires no token or network access.
 
 `run` fetches repository inventory and writes local dry-run reports.
+
+`release-status` inspects configured local repositories and reports release drift using read-only git commands. It shows the current branch, HEAD, latest local tag, latest remote tag via `git ls-remote`, commits since the latest tag, ahead/behind counts against the local origin branch ref, dirty/untracked state, obvious version-surface mismatches, and advisory classifications such as `released`, `unreleased commits`, `ahead of remote`, `dirty worktree`, `untagged`, `version mismatch`, and `no origin configured`.
+
+Use `--repo /path/to/repo` one or more times to inspect explicit paths instead of `local_repositories`.
 
 ## Token Setup
 
@@ -63,6 +71,13 @@ The default `steward.config.json` targets the authenticated user:
       "visibility": "all",
       "affiliation": "owner,collaborator,organization_member"
     }
+  ],
+  "local_repositories": [
+    "/Users/mbeason/olivaw",
+    "/Users/mbeason/prime-observer",
+    "/Users/mbeason/core-signal",
+    "/Users/mbeason/github-steward",
+    "/Users/mbeason/Projects/portfolio-steward"
   ],
   "checks": {
     "readme": true,

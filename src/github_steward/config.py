@@ -17,6 +17,7 @@ class StewardConfig:
     token_env: str
     output_dir: str
     targets: list[dict[str, Any]]
+    local_repositories: list[str]
     checks: dict[str, bool]
     classification: dict[str, int]
 
@@ -71,6 +72,13 @@ def load_config(path: str | Path) -> StewardConfig:
     for target in targets:
         _validate_target(target)
 
+    local_repositories = data.get("local_repositories", [])
+    if not isinstance(local_repositories, list):
+        raise ConfigError("local_repositories must be an array.")
+    for repo_path in local_repositories:
+        if not isinstance(repo_path, str) or not repo_path:
+            raise ConfigError("local_repositories entries must be non-empty strings.")
+
     provided_checks = data.get("checks", {})
     if not isinstance(provided_checks, dict):
         raise ConfigError("checks must be an object.")
@@ -100,6 +108,7 @@ def load_config(path: str | Path) -> StewardConfig:
         token_env=token_env,
         output_dir=output_dir,
         targets=targets,
+        local_repositories=local_repositories,
         checks=checks,
         classification=classification,
     )

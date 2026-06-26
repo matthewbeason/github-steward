@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 import unittest
 from dataclasses import dataclass
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from github_steward.cli import sample_inventory
 from github_steward.reports import build_decision_ledger, write_reports

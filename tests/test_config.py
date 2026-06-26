@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from github_steward.config import ConfigError, load_config
 
@@ -19,7 +22,25 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.version, 1)
         self.assertEqual(config.token_env, "GITHUB_TOKEN")
         self.assertEqual(config.output_dir, "reports")
+        self.assertEqual(config.local_repositories, [])
         self.assertTrue(config.checks["readme"])
+
+    def test_local_repositories_load(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "steward.config.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "targets": [{"kind": "user", "username": "octocat"}],
+                        "local_repositories": ["/tmp/example"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            config = load_config(path)
+
+        self.assertEqual(config.local_repositories, ["/tmp/example"])
 
     def test_missing_targets_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

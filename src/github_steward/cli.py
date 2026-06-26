@@ -11,6 +11,7 @@ from .config import ConfigError, load_config, load_dotenv, target_requires_token
 from .github_api import GitHubAPIError, GitHubClient, collect_inventory
 from .models import Inventory, RepoRecord
 from .reports import write_reports
+from .release_status import collect_release_status, format_release_status_table, release_status_json
 
 
 def main(argv: list[str] | None = None, *, dotenv_path: str | Path | None = ".env") -> int:
@@ -20,6 +21,8 @@ def main(argv: list[str] | None = None, *, dotenv_path: str | Path | None = ".en
         return sample_command(args)
     if args.command == "run":
         return run_command(args, dotenv_path=dotenv_path)
+    if args.command == "release-status":
+        return release_status_command(args)
     if args.command == "validate":
         return validate_command(args, dotenv_path=dotenv_path)
     parser.print_help()
@@ -38,6 +41,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     run = subparsers.add_parser("run", help="Fetch GitHub inventory and generate dry-run reports.")
     run.add_argument("--config", default="steward.config.json", help="Path to steward.config.json.")
+
+    release_status = subparsers.add_parser("release-status", help="Report read-only local release drift.")
+    release_status.add_argument("--config", default="steward.config.json", help="Path to steward.config.json.")
+    release_status.add_argument(
+        "--repo",
+        action="append",
+        dest="repos",
+        help="Local repository path to inspect. May be repeated; overrides config local_repositories.",
+    )
+    release_status.add_argument("--json", action="store_true", help="Write machine-readable JSON.")
 
     validate = subparsers.add_parser("validate", help="Validate config and optional GitHub token readiness.")
     validate.add_argument("--config", default="steward.config.json", help="Path to steward.config.json.")
@@ -79,6 +92,27 @@ def run_command(args: argparse.Namespace, *, dotenv_path: str | Path | None = ".
 
     print(f"Wrote read-only reports for {len(assessments)} repositories to {config.output_dir}/")
     print("Safety mode: READ_ONLY_DRY_RUN")
+    return 0
+
+
+def release_status_command(args: argparse.Namespace) -> int:
+    try:
+        config = load_config(args.config)
+    except ConfigError as exc:
+        print(f"Config error: {exc}", file=sys.stderr)
+        return 1
+
+    repo_paths = args.repos if args.repos else config.local_repositories
+    if not repo_paths:
+        print("No local repositories configured. Add local_repositories to config or pass --repo.", file=sys.stderr)
+        return 1
+
+    statuses = collect_release_status(repo_paths)
+    if args.json:
+        print(release_status_json(statuses))
+    else:
+        print(format_release_status_table(statuses))
+        print("Safety mode: READ_ONLY_RELEASE_STATUS")
     return 0
 
 

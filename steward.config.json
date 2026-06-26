@@ -9,6 +9,13 @@
       "affiliation": "owner,collaborator,organization_member"
     }
   ],
+  "local_repositories": [
+    "/Users/mbeason/olivaw",
+    "/Users/mbeason/prime-observer",
+    "/Users/mbeason/core-signal",
+    "/Users/mbeason/github-steward",
+    "/Users/mbeason/Projects/portfolio-steward"
+  ],
   "checks": {
     "readme": true,
     "pull_requests": true,
