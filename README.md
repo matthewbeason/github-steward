@@ -4,6 +4,15 @@ GitHub Steward is a local-first, read-only repository stewardship CLI for GitHub
 
 It inventories repositories through GitHub's REST API, scores maintenance health, classifies repositories into review buckets, and writes dry-run reports with auditable reasoning. Phase 1 never mutates GitHub state: it does not archive, delete, rename, transfer, open issues, create pull requests, push commits, or make any other write-side GitHub changes.
 
+## Capabilities
+
+- Portfolio health reporting with repository scores and review classifications
+- Release drift reporting across configured local repositories
+- Version-surface scanning against local and remote release tags
+- Machine-readable JSON inventory, decision ledger, and release-status output
+- JSON configuration for account targets, local repositories, checks, and scoring thresholds
+- A read-only safety model: analysis and recommendations never mutate repositories or GitHub state
+
 ## Commands
 
 Run from source:
