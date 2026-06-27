@@ -24,6 +24,31 @@ VERSION_SURFACE_FILES = (
     "viz/*.html",
 )
 
+ACTIVE_VERSION_PATTERNS = (
+    "current release",
+    "current production release",
+    "production release",
+    "latest release",
+    "__version__",
+    "buildtag",
+    "build tag",
+    "build ",
+)
+HISTORICAL_VERSION_PATTERNS = (
+    "previous production release",
+    "previous release",
+    "prior release",
+    "historical release",
+    "historical release notes",
+    "release notes",
+    "released ",
+    "changelog",
+)
+NEUTRAL_VERSION_PATTERNS = (
+    "version",
+    "release",
+)
+
 
 @dataclass(frozen=True)
 class VersionSurface:
@@ -304,7 +329,7 @@ def _has_version_mismatch(surfaces: list[VersionSurface], release_tag: str | Non
     release_version = _normalize_version(release_tag)
     if release_version is None:
         return False
-    return any(_normalize_version(surface.version) != release_version for surface in surfaces)
+    return any(_normalize_version(surface.version) != release_version for surface in _preferred_version_surfaces(surfaces))
 
 
 def _normalize_version(value: str) -> str | None:
@@ -315,11 +340,37 @@ def _normalize_version(value: str) -> str | None:
 
 
 def _line_looks_version_related(line: str) -> bool:
+    return _line_version_priority(line) > 0
+
+
+def _preferred_version_surfaces(surfaces: list[VersionSurface]) -> list[VersionSurface]:
+    if not surfaces:
+        return []
+    prioritized = sorted(surfaces, key=lambda surface: _line_version_priority(surface.text), reverse=True)
+    best_priority = _line_version_priority(prioritized[0].text)
+    if best_priority <= 0:
+        return []
+    return [surface for surface in prioritized if _line_version_priority(surface.text) == best_priority]
+
+
+def _line_version_priority(line: str) -> int:
     lowered = line.lower()
-    return any(
-        word in lowered
-        for word in ("current release", "production release", "version", "__version__", "buildtag", "build tag")
-    )
+    if any(pattern in lowered for pattern in HISTORICAL_VERSION_PATTERNS):
+        return 0
+    if any(pattern in lowered for pattern in ACTIVE_VERSION_PATTERNS):
+        return 3
+    if _looks_like_product_version_banner(line):
+        return 2
+    if any(pattern in lowered for pattern in NEUTRAL_VERSION_PATTERNS):
+        return 1
+    return 0
+
+
+def _looks_like_product_version_banner(line: str) -> bool:
+    if VERSION_RE.search(line) is None:
+        return False
+    stripped = line.strip().strip("#*-:|`'\"")
+    return bool(re.fullmatch(r"[A-Za-z][A-Za-z0-9 ._/\-()]+ v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?\.?", stripped))
 
 
 def _tag_sort_key(tag: str) -> tuple[tuple[int, ...], str]:

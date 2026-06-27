@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from github_steward.cli import main
-from github_steward.release_status import inspect_repository
+from github_steward.release_status import inspect_repository, release_status_json
 
 
 class ReleaseStatusTests(unittest.TestCase):
@@ -137,6 +137,91 @@ class ReleaseStatusTests(unittest.TestCase):
 
         self.assertEqual(status.version_surfaces[0].version, "v0.7.2")
         self.assertIn("version mismatch", status.classifications)
+
+    def test_current_release_wins_over_previous_release_reference(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = init_repo(root / "current-vs-previous")
+            write_file(
+                repo / "README.md",
+                "Current release: v0.8.1\n"
+                "Previous production release: v0.7.2\n",
+            )
+            git(repo, "add", "README.md")
+            git(repo, "commit", "-m", "initial")
+            git(repo, "tag", "v0.8.1")
+            add_origin(repo, root / "remote.git")
+
+            status = inspect_repository(repo)
+
+        self.assertEqual(status.classifications, ["released"])
+
+    def test_current_release_mismatch_is_still_reported(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = init_repo(Path(tmp) / "current-release-mismatch")
+            write_file(repo / "README.md", "Current release: v0.8.0\n")
+            git(repo, "add", "README.md")
+            git(repo, "commit", "-m", "initial")
+            git(repo, "tag", "v0.8.1")
+
+            status = inspect_repository(repo)
+
+        self.assertIn("version mismatch", status.classifications)
+
+    def test_historical_release_notes_do_not_override_current_release(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = init_repo(Path(tmp) / "historical-release-notes")
+            write_file(
+                repo / "README.md",
+                "# Prime Observer v0.8.1\n"
+                "Current production release: v0.8.1\n"
+                "## Historical release notes\n"
+                "Released v0.7.2\n"
+                "Changelog\n",
+            )
+            git(repo, "add", "README.md")
+            git(repo, "commit", "-m", "initial")
+            git(repo, "tag", "v0.8.1")
+
+            status = inspect_repository(repo)
+
+        self.assertNotIn("version mismatch", status.classifications)
+        self.assertEqual({surface.version for surface in status.version_surfaces}, {"v0.8.1"})
+
+    def test_dashboard_build_surface_is_detected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = init_repo(Path(tmp) / "dashboard-build")
+            viz = repo / "viz"
+            viz.mkdir()
+            write_file(viz / "index.html", "<footer>Build v0.8.1</footer>\n")
+            git(repo, "add", "viz/index.html")
+            git(repo, "commit", "-m", "initial")
+            git(repo, "tag", "v0.8.1")
+
+            status = inspect_repository(repo)
+
+        self.assertEqual([surface.version for surface in status.version_surfaces], ["v0.8.1"])
+        self.assertNotIn("version mismatch", status.classifications)
+
+    def test_json_output_reports_corrected_release_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = init_repo(root / "json-current-vs-previous")
+            write_file(
+                repo / "README.md",
+                "Current release: v0.8.1\n"
+                "Previous production release: v0.7.2\n",
+            )
+            git(repo, "add", "README.md")
+            git(repo, "commit", "-m", "initial")
+            git(repo, "tag", "v0.8.1")
+            add_origin(repo, root / "remote.git")
+
+            status = inspect_repository(repo)
+            payload = json.loads(release_status_json([status]))
+
+        self.assertEqual(payload[0]["classifications"], ["released"])
+        self.assertEqual(payload[0]["version_surfaces"][0]["version"], "v0.8.1")
 
     def test_json_output(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
